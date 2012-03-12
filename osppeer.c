@@ -309,6 +309,7 @@ static size_t read_tracker_response(task_t *t)
 
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
+		//TODO: fix bug 
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR)
 			die("tracker read error");
@@ -461,6 +462,7 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 	task_t *t = NULL;
 	peer_t *p;
 	size_t messagepos;
+	int i = 0;
 	assert(tracker_task->type == TASK_TRACKER);
 
 	message("* Finding peers for '%s'\n", filename);
@@ -477,6 +479,12 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
+	while(filename[i]!='\0'){
+		i++;
+	}
+	//TODO: buffer overrun possible	
+	if (i>FILENAMESIZ)
+		die("File name - %s - too large", filename);
 	strcpy(t->filename, filename);
 
 	// add peers
@@ -503,6 +511,7 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 //	until a download is successful.
 static void task_download(task_t *t, task_t *tracker_task)
 {
+	int sizebound = 0;
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
 	       && tracker_task->type == TASK_TRACKER);
@@ -557,6 +566,8 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
+		if(sizebound>100000)
+			goto try_again;
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
@@ -570,6 +581,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 			error("* Disk write error");
 			goto try_again;
 		}
+		sizebound++;
 	}
 
 	// Empty files are usually a symptom of some error.
