@@ -473,11 +473,13 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		      filename, &tracker_task->buf[messagepos]);
 		goto exit;
 	}
-
 	if (!(t = task_new(TASK_DOWNLOAD))) {
 		error("* Error while allocating task");
 		goto exit;
 	}
+	
+	size_t i = 0;
+	
 	while(filename[i]!='\0'&& i<=FILENAMESIZ){
 		i++;
 	}
@@ -511,6 +513,7 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 //	until a download is successful.
 static void task_download(task_t *t, task_t *tracker_task)
 {
+	int sizebound = 0;
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
 	       && tracker_task->type == TASK_TRACKER);
@@ -570,6 +573,8 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
+		if(sizebound>10000)
+			goto try_again;
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer read error");
@@ -583,6 +588,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 			error("* Disk write error");
 			goto try_again;
 		}
+		sizebound++;
 	}
 
 	// Empty files are usually a symptom of some error.
