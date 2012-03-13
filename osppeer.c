@@ -478,7 +478,14 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
+	while(filename[i]!='\0'&& i<=FILENAMESIZ){
+		i++;
+	}
+	//TODO: buffer overrun possible	
+	if (i>FILENAMESIZ)
+		die("File name - %s - too large", filename);
 	strcpy(t->filename, filename);
+
 
 	// add peers
 	s1 = tracker_task->buf;
