@@ -673,7 +673,7 @@ static void task_upload(task_t *t)
 		if (t->filename[i] == '/')
 			die("Can only upload files from the current directory!\n");
 		i++;
-		printf("helllllo\n");
+		//printf("helllllo\n");
 	}
 	t->disk_fd = open(t->filename, O_RDONLY);
 	if (t->disk_fd == -1) {
@@ -802,33 +802,37 @@ int main(int argc, char *argv[])
 
 	// First, download files named on command line.
 	for (; argc > 1; argc--, argv++){
-		if ((t = start_download(tracker_task, argv[1]))){
-			if(numfork<32){
-				pid = fork();
-				if(pid == 0){			
-					task_download(t, tracker_task);
-					exit(0);
-				}if (pid>0){
-					numfork++;
-				}
-			}
-		}
-		printf("%d\n", numfork);
-	}
 
-	// Then accept connections from other peers and upload files to them!
-	while ((t = task_listen(listen_task))){
-		if(waitpid(-1, 0, WNOHANG)> 0)
-			numfork--;
 		if(numfork<32){
 			pid = fork();
 			if(pid == 0){
+				t = start_download(tracker_task, argv[1]);
+				task_download(t, tracker_task);
+				exit(0);
+			}if (pid>0){
+				numfork++;
+			}
+		}
+		//printf("%d\n", numfork);
+	}
+
+	//while (1) continue;
+	// Then accept connections from other peers and upload files to them!
+	while ((1)){
+		if (numfork > 0)
+			if(waitpid(-1, 0, WNOHANG)> 0)
+				numfork--;
+		if(numfork<32){
+			pid = fork();
+			if(pid == 0){
+				t = task_listen(listen_task);
 				task_upload(t);
+				printf("YARR! %d\n", numfork);
 				exit(0);
 			}else if(pid>0){
 				numfork++;
 			}
-			printf("%d\n", numfork);
+			//printf("%d\n", numfork);
 		}
 	}
 
