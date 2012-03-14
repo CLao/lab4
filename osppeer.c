@@ -700,13 +700,17 @@ static void task_upload(task_t *t)
 	}
 
 	assert(t->head == 0);
+	
+	if((t->tail - t->head)>(11+FILENAMESIZ))
+		die("Cannot open file %s\n", t->filename);
 	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
 		error("* Odd request %.*s\n", t->tail, t->buf);
 		goto exit;
 	}
-	t->head = t->tail = 0;
 
-	while(t->filename[i] != '\0'){
+	t->head = t->tail = 0;
+	i = 0;
+	while(t->filename[i] != '\0' || i<FILENAMESIZ){
 		if (t->filename[i] == '/')
 			die("Can only upload files from the current directory!\n");
 		i++;
