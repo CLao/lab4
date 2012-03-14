@@ -13,17 +13,21 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Christian Lao
+Student ID: 803777334
+Email: clao@ucla.edu
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Trent Bramer
+Student ID: 103794346
+Email: tbramer937@ucla.edu
 
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
+
+For each download/upload task, we call fork() to copy the process.
+The child then runs the task, while the parent continues execution
+as if the task were already done.
 
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
@@ -31,8 +35,32 @@ Email:
 # EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
 #    each)
 
+An attempt was made to fix the "premature disconnection" from the popular
+tracker. The bug was narrowed down to the parser for the completeness
+of the tracker message buffer; if a single line of the buffer took up
+more space than the task buffer allows, the parser would not be able
+to parse the terminating line correctly. We could not fix the bug.
+
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
+
+The first "evil mode" attack was an attempt at a buffer overflow. When
+we attempt to download a file from a peer, we tell that peer we want a
+file whose name is 10000 bytes long, which is bigger than the space
+allotted for the filename buffer. This, if not protected against,
+starts to write over the stack space of the program on the victim
+peer. If we knew enough about the target machine, we could also
+write executable instructions into this space and be able to execute
+arbitrary code on the victim.
+
+The second "evil mode" attack was an attempt at a Denial of Service
+attack. When another peer tries to download a file from us, we start
+writing to the peer arbitrary data instead of the complete file. The
+denial of service comes from the fact that we never write the buffer
+end variable, and therefore never tell the other peer we're done uploading.
+If the other peer has no timeout in place, they will be stuck with
+a download thread that will never finish. If the other peer still
+downloads serially, then they will never finish program execution at all.
 
 # Extra credit problems
 #Extra credit problem: none
