@@ -288,40 +288,41 @@ static size_t read_tracker_response(task_t *t)
 	char *s;
 	size_t split_pos = (size_t) -1, pos = 0;
 	t->head = t->tail = 0;
-	int inMessage = 0;
-	size_t it;
-	int ret;
+
 	while (1) {
 		// Check for whether buffer is complete.
-
-		for (; pos+3 < t->tail; pos++) {
+		for (; pos+3 < t->tail; pos++)
 			if ((pos == 0 || t->buf[pos-1] == '\n')
 			    && isdigit((unsigned char) t->buf[pos])
 			    && isdigit((unsigned char) t->buf[pos+1])
 			    && isdigit((unsigned char) t->buf[pos+2])) {
-				if (split_pos == (size_t) -1){
+				if (split_pos == (size_t) -1)
 					split_pos = pos;
-					inMessage = 1;
-				}
 				if (pos + 4 >= t->tail)
 					break;
-
 				if (isspace((unsigned char) t->buf[pos + 3])
 				    && t->buf[t->tail - 1] == '\n') {
 					t->buf[t->tail] = '\0';
 					return split_pos;
 				}
 			}
-		}
+
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
 		//TODO: fix bug 
-		ret = read_to_taskbuf(t->peer_fd, t);
+		int ret = read_to_taskbuf(t->peer_fd, t);
 		if (ret == TBUF_ERROR)
 			die("tracker read error");
-		else if (ret == TBUF_END && inMessage)
-			die("tracker connection closed prematurely!\n");
-		
+		else if (ret == TBUF_END){
+			if(t->tail == TASKBUFSIZ){
+				pos = TASKBUFSIZ;
+				t->buf[pos-2] = '\n';
+				t->buf[pos-1] = '\0';
+				return TASKBUFSIZ;
+			}
+			else
+				die("tracker connection closed prematurely!\n");
+		}
 	}
 }
 
