@@ -450,7 +450,7 @@ static void register_files(task_t *tracker_task, const char *myalias)
 static peer_t *parse_peer(const char *s, size_t len)
 {
 	peer_t *p = (peer_t *) malloc(sizeof(peer_t));
-	if(len<TASKBUFSIZ)
+	if(len>TASKBUFSIZ)
 		return NULL;
 	if (p) {
 		p->next = NULL;
