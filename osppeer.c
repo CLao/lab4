@@ -314,11 +314,33 @@ static size_t read_tracker_response(task_t *t)
 		if (ret == TBUF_ERROR)
 			die("tracker read error");
 		else if (ret == TBUF_END){
-			if(t->tail == TASKBUFSIZ){
-				pos = TASKBUFSIZ;
-				t->buf[pos-2] = '\n';
-				t->buf[pos-1] = '\0';
-				return TASKBUFSIZ;
+			while((read(t->peer_fd, NULL, TASKBUFSIZ))!=0)
+				continue;
+			if(t->tail%TASKBUFSIZ == 0){
+				pos = TASKBUFSIZ-1;
+				while(t->buf[pos]!='\n')
+					pos--;
+				/*while(t->buf[pos]!='\n')
+					pos--;
+				while(t->buf[pos]!='\n')
+					pos--;*/
+				split_pos = pos;
+				/*pos++;
+				t->buf[pos] = ' ';
+				pos++;
+				t->buf[pos] = '2';
+				str = "200 Number of Peers: a lot\n";
+				strlen = 27;
+				ind = 0;
+				while (pos<TASKBUFSIZ && ind < strlen){
+					t->buf[pos] = str[ind];
+					pos++; ind++;
+				}				
+
+				for (;pos<TASKBUFSIZ; pos++)
+					t->buf[pos] = '\0';*/
+				//printf("String: %s\n\n", t->buf);
+				return split_pos;
 			}
 			else
 				die("tracker connection closed prematurely!\n");
