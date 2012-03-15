@@ -477,6 +477,8 @@ static void register_files(task_t *tracker_task, const char *myalias)
 static peer_t *parse_peer(const char *s, size_t len)
 {
 	peer_t *p = (peer_t *) malloc(sizeof(peer_t));
+	if(len<TASKBUFSIZ)
+		return NULL;
 	if (p) {
 		p->next = NULL;
 		if (osp2p_snscanf(s, len, "PEER %s %I:%d",
@@ -701,7 +703,7 @@ static void task_upload(task_t *t)
 
 	assert(t->head == 0);
 	
-	if((t->tail - t->head)>(11+FILENAMESIZ))
+	if(t->tail>(11+FILENAMESIZ))
 		die("Cannot open file %s\n", t->filename);
 	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
 		error("* Odd request %.*s\n", t->tail, t->buf);
