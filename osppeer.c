@@ -295,7 +295,6 @@ static size_t read_tracker_response(task_t *t)
 		// Check for whether buffer is complete.
 
 		for (; pos+3 < t->tail; pos++) {
-			printf("%c",t->buf[pos]);
 			if ((pos == 0 || t->buf[pos-1] == '\n')
 			    && isdigit((unsigned char) t->buf[pos])
 			    && isdigit((unsigned char) t->buf[pos+1])
@@ -314,8 +313,6 @@ static size_t read_tracker_response(task_t *t)
 				}
 			}
 		}
-
-		printf("--SPLIT--");
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
 		//TODO: fix bug 
@@ -843,7 +840,6 @@ int main(int argc, char *argv[])
 			if(pid == 0){
 				t = task_listen(listen_task);
 				task_upload(t);
-				printf("YARR! %d\n", numfork);
 				exit(0);
 			}else if(pid>0){
 				numfork++;
